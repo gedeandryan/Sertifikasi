@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LibraKu — Premium Library System</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lato:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+    /* 1. CSS VARIABLES & RESET */
+    :root {
+      --bg-main: #faf6f0;
+      --bg-card: #ffffff;
+      --primary: #7c5c38;
+      --accent-red: #c0392b;
+      --accent-blue: #2980b9;
+      --text-dark: #2c1e0f;
+      --text-muted: #9c8472;
+      --border-color: #e0d4c0;
+      --radius: 12px;
+      --shadow: 0 4px 20px rgba(124, 92, 56, 0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      background: var(--bg-main); 
+      color: var(--text-dark); 
+      font-family: 'Lato', sans-serif; 
+      line-height: 1.6;
+    }
+
+    /* 2. LAYOUT COMPONENTS */
+    header {
+      background: var(--text-dark);
+      color: #fff9f2;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0; z-index: 1000;
+    }
+
+    .nav-tabs {
+      background: var(--bg-card);
+      display: flex;
+      justify-content: center;
+      border-bottom: 2px solid var(--border-color);
+      overflow-x: auto;
+    }
+
+    .nav-tab {
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--text-muted);
+      transition: 0.3s;
+      white-space: nowrap;
+    }
+
+    .nav-tab.active { color: var(--accent-red); border-bottom: 3px solid var(--accent-red); }
+
+    .container { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+
+    /* 3. UI ELEMENTS */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow);
+    }
+
+    .grid-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: var(--radius);
+      border-left: 5px solid var(--primary);
+    }
+
+    /* Table Styling */
+    .table-responsive { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th { background: #f8f1e7; padding: 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; }
+    td { padding: 12px; border-bottom: 1px solid #eee; }
+
+    /* Form Styling */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    input, select, textarea {
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .btn {
+      padding: 0.7rem 1.2rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      transition: 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-outline { border: 1px solid var(--primary); color: var(--primary); background: transparent; }
+
+    /* Utility Classes */
+    .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+    .bg-blue { background: #e3f2fd; color: #1976d2; }
+    .bg-green { background: #e8f5e9; color: #2e7d32; }
+
+    @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1 style="font-family: 'Playfair Display'; font-size: 1.5rem;">Libra<span style="color:#e67e22">Ku</span></h1>
+  </div>
+  <div id="current-date"></div>
+</header>
+
+<nav class="nav-tabs">
+  <div class="nav-tab active" onclick="Router.go('dashboard')">📊 Dashboard</div>
+  <div class="nav-tab" onclick="Router.go('buku')">📚 Buku</div>
+  <div class="nav-tab" onclick="Router.go('anggota')">👤 Anggota</div>
+  <div class="nav-tab" onclick="Router.go('pinjam')">🔄 Transaksi</div>
+</nav>
+
+<main class="container">
+  <section id="view-dashboard" class="content-view">
+    <div class="grid-stats" id="stat-container"></div>
+    <div class="form-grid">
+      <div class="card">
+        <h3>Penyebaran Kategori</h3>
+        <canvas id="chartKategori"></canvas>
+      </div>
+      <div class="card">
+        <h3>Status Peminjaman</h3>
+        <canvas id="chartStatus"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-buku" class="content-view" style="display:none">
+    <div class="card">
+      <h3 id="form-title">Tambah Koleksi Baru</h3>
+      <div class="form-grid" style="margin-top:1rem">
+        <div class="form-group"><label>Kode</label><input id="b-kode" placeholder="BK-001"></div>
+        <div class="form-group"><label>Judul</label><input id="b-judul" placeholder="Judul Buku"></div>
+        <div class="form-group"><label>Kategori</label>
+          <select id="b-kategori">
+            <option>Novel</option><option>Sains</option><option>Teknologi</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Stok</label><input type="number" id="b-stok" value="1"></div>
+      </div>
+      <div style="margin-top:1rem; display:flex; gap:10px">
+        <button class="btn btn-primary" onclick="UI.handleSaveBuku()">Simpan Buku</button>
+        <button class="btn btn-outline" onclick="UI.resetBukuForm()">Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr><th>Kode</th><th>Judul</th><th>Kategori</th><th>Stok</th><th>Aksi</th></tr>
+          </thead>
+          <tbody id="list-buku"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/**
+ *  */
+
+/* ==========================================
+   1. CORE ENGINE (DATA & MODELS)
+   ========================================== */
+const Store = {
+  get: (key) => JSON.parse(localStorage.getItem(`libra_${key}`)) || [],
+  set: (key, data) => localStorage.setItem(`libra_${key}`, JSON.stringify(data))
+};
+
+class Buku {
+  constructor(kode, judul, kategori, stok) {
+    this.kode = kode;
+    this.judul = judul;
+    this.kategori = kategori;
+    this.stok = parseInt(stok);
+  }
+}
+
+/* ==========================================
+   2. UI LOGIC (CONTROLLER)
+   ========================================== */
+const Router = {
+  go: (target) => {
+    document.querySelectorAll('.content-view').forEach(v => v.style.display = 'none');
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    
+    const activeView = document.getElementById(`view-${target}`);
+    if(activeView) activeView.style.display = 'block';
+    
+    // Highlight tab (logic sederhana)
+    event.currentTarget.classList.add('active');
+
+    if(target === 'dashboard') UI.renderDashboard();
+    if(target === 'buku') UI.renderBukuList();
+  }
+};
+
+const UI = {
+  renderDashboard: () => {
+    const buku = Store.get('buku');
+    const container = document.getElementById('stat-container');
+    container.innerHTML = `
+      <div class="stat-card"><h4>Total Buku</h4><h2>${buku.length}</h2></div>
+      <div class="stat-card" style="border-left-color: var(--accent-blue)"><h4>Kategori</h4><h2>${new Set(buku.map(b => b.kategori)).size}</h2></div>
+    `;
+    UI.initCharts();
+  },
+
+  handleSaveBuku: () => {
+    const inputs = {
+      kode: document.getElementById('b-kode').value,
+      judul: document.getElementById('b-judul').value,
+      kategori: document.getElementById('b-kategori').value,
+      stok: document.getElementById('b-stok').value
+    };
+
+    if(!inputs.kode || !inputs.judul) return alert("Lengkapi data!");
+
+    const bukuList = Store.get('buku');
+    bukuList.push(new Buku(inputs.kode, inputs.judul, inputs.kategori, inputs.stok));
+    Store.set('buku', bukuList);
+    
+    UI.resetBukuForm();
+    UI.renderBukuList();
+    alert("Buku berhasil disimpan!");
+  },
+
+  renderBukuList: () => {
+    const list = Store.get('buku');
+    const tbody = document.getElementById('list-buku');
+    tbody.innerHTML = list.map(b => `
+      <tr>
+        <td><b>${b.kode}</b></td>
+        <td>${b.judul}</td>
+        <td><span class="badge bg-blue">${b.kategori}</span></td>
+        <td>${b.stok}</td>
+        <td><button class="btn btn-outline" style="padding:2px 8px" onclick="UI.deleteBuku('${b.kode}')">Hapus</button></td>
+      </tr>
+    `).join('');
+  },
+
+  deleteBuku: (kode) => {
+    if(!confirm("Hapus buku ini?")) return;
+    const filtered = Store.get('buku').filter(b => b.kode !== kode);
+    Store.set('buku', filtered);
+    UI.renderBukuList();
+  },
+
+  resetBukuForm: () => {
+    document.querySelectorAll('#view-buku input').forEach(i => i.value = '');
+  },
+
+  initCharts: () => {
+    // Implementasi Chart.js ringkas
+    const ctx = document.getElementById('chartKategori');
+    if(!ctx) return;
+    
+    const dataBuku = Store.get('buku');
+    const counts = dataBuku.reduce((acc, b) => {
+      acc[b.kategori] = (acc[b.kategori] || 0) + 1;
+      return acc;
+    }, {});
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(counts),
+        datasets: [{ label: 'Jumlah Buku', data: Object.values(counts), backgroundColor: '#7c5c38' }]
+      }
+    });
+  }
+};
+
+// Initialization
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('current-date').innerText = new Date().toLocaleDateString('id-ID', { dateStyle: 'full' });
+  UI.renderDashboard();
+});
+
+</script>
+</body>
+</html>
